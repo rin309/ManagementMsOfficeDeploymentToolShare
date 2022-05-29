@@ -1,5 +1,4 @@
 #Requires -Version 5.0
-#Requires -RunAsAdministrator
 
 <#
  .Synopsis
@@ -37,56 +36,58 @@ Function Invoke-MsOfficeDeploymentToolAndCompress{
             New-EventLog -LogName Application -Source $EventLogSourceName
             Limit-EventLog -LogName $EventLogSourceName -RetentionDays 180
         }
-        If (-not (Test-Path $Path)){
-            Write-EventLog -LogName Application -Source $EventLogSourceName -EventID 1 -Message "not found" -EntryType Error
-            Return
-        }
 
         Try{
             $Process = Start-Process -FilePath $Path -ArgumentList $Argument -WorkingDirectory $WorkingDirectory -WindowStyle Hidden -PassThru -Wait
             If ($Process.ExitCode -ne 0){
                 Write-Warning "$($InvokeMsOfficeDeploymentToolAndCompressMessageTable.WarnExitCodeByInvokeApplication) [$Path $Argument] : $($Process.ExitCode)" -Verbose
                 If (-not $NoEventLogging){
-                    Write-EventLog -LogName Application -Source $EventLogSourceName -EventID $Process.ExitCode -Message $Message -EntryType Error
+                    Write-EventLog -LogName Application -Source $EventLogSourceName -EventID $Process.ExitCode -Message $Message -Category 2 -EntryType Error
                 }
                 Return
             }
             If (-not $NoEventLogging){
-                Write-EventLog -LogName Application -Source $EventLogSourceName -EventID 0 -Message $Message
+                Write-EventLog -LogName Application -Source $EventLogSourceName -EventID 0 -Message $Message -Category 2
             }
         }
         Catch{
             Write-Warning "$($InvokeMsOfficeDeploymentToolAndCompressMessageTable.WarnByInvokeApplication) [$Path $Argument] : $($_.Exception.Message)"
             If (-not $NoEventLogging){
-                Write-EventLog -LogName Application -Source $EventLogSourceName -EventID 1 -Message "$($_.Exception.Message)`n`n$Message" -EntryType Error
+                Write-EventLog -LogName Application -Source $EventLogSourceName -EventID 1 -Message "$($_.Exception.Message)`n`n$Message" -Category 2 -EntryType Error
             }
         }
     }
     Function Remove-ClickToRunOldVersionsFromDirectory{
         $FirstItem = $True
         $OfficeDataDirectoryPath = ".\Office\Data"
-        Get-ChildItem -Path $OfficeDataDirectoryPath -Directory | Sort-Object {[System.Version]$_.Name} -Descending | ForEach-Object {
+        $Log = "$($InvokeMsOfficeDeploymentToolAndCompressMessageTable.LatestLabel):"
+        Get-ChildItem -Path $OfficeDataDirectoryPath -Directory | Where-Object {($_.Name -as [System.Version]) -ne $Null} | Sort-Object {[System.Version]$_.Name} -Descending | ForEach-Object {
             If (-not $FirstItem){
                 Remove-Item -Path $_.FullName -Force -Recurse
                 Get-ChildItem -Path $OfficeDataDirectoryPath -File -Filter "v64_$($_.Name).cab" | Remove-Item -Force
                 Get-ChildItem -Path $OfficeDataDirectoryPath -File -Filter "v86_$($_.Name).cab" | Remove-Item -Force
+                $Log = "$Log`n$($_.Name)"
+            }
+            Else{
+                $Log = "$Log`n$($_.Name)`n`n$($InvokeMsOfficeDeploymentToolAndCompressMessageTable.RemovedLabel):"
             }
             $FirstItem = $False
         }
+        Return $Log
     }
     $EventLogSourceName = "ManagementMsOfficeDeploymentToolShare"
     Try{
     
         Set-Location -Path $WorkingDirectory
         Invoke-Application -Path "setup.exe" -Argument "/Download $ConfigFileName" -WorkingDirectory $WorkingDirectory -NoEventLogging $NoEventLogging -EventLogSourceName $EventLogSourceName
-        Remove-ClickToRunOldVersionsFromDirectory
+        $Message = Remove-ClickToRunOldVersionsFromDirectory
         If (-not $NoEventLogging){
-            Write-EventLog -LogName Application -Source $EventLogSourceName -EventID 0 -Message $Message
+            Write-EventLog -LogName Application -Source $EventLogSourceName -EventID 0 -Message $Message -Category 1
         }
     }
     Catch{
         If (-not $NoEventLogging){
-            Write-EventLog -LogName Application -Source $EventLogSourceName -EventID 1 -Message "$($_.Exception.Message)" -EntryType Error
+            Write-EventLog -LogName Application -Source $EventLogSourceName -EventID 1 -Message "$($_.Exception.Message)" -Category 1 -EntryType Error
         }
     }
     

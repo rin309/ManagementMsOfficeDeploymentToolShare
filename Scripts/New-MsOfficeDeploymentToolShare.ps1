@@ -1,5 +1,4 @@
 ﻿#Requires -Version 5.0
-#Requires -RunAsAdministrator
 
 <#
  .Synopsis
