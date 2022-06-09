@@ -52,17 +52,25 @@
    New-MsOfficeDeploymentToolShare -ConfigPath $env:UserProfile\Downloads\Configuration.xml -LocalOfficeDeploymentToolPath $env:UserProfile\Downloads\officedeploymenttool_15128-20224.exe
 
  .Example
+   # Multiple configuration command sample
+   New-MsOfficeDeploymentToolShare -ConfigPath @("$env:UserProfile\Downloads\configuration-Office365-x64.xml","$env:UserProfile\Downloads\configuration-Office2021Enterprise.xml") -LocalOfficeDeploymentToolPath $env:UserProfile\Downloads\officedeploymenttool_15128-20224.exe
+
+ .Example
    # Select additional option
    New-MsOfficeDeploymentToolShare -ConfigPath $env:UserProfile\Downloads\Configuration.xml -LocalOfficeDeploymentToolPath $env:UserProfile\Downloads\officedeploymenttool_15128-20224.exe -DestinationDirectory D:\Shares -DirectoryName PerpetualVL2021 -Force
 
  .Example
    # Install to running command sample by command prompt
-   PowerShell -ExecutionPolicy ByPass -Command "Import-Module ManagementMsOfficeDeploymentToolShare; New-MsOfficeDeploymentToolShare -ConfigPath $env:UserProfile\Downloads\Configuration.xml -LocalOfficeDeploymentToolPath $env:UserProfile\Downloads\officedeploymenttool_15128-20224.exe-ConfigPath \""$env:UserProfile\Downloads\Configuration.xml\"" -LocalOfficeDeploymentToolPath \""$env:UserProfile\Downloads\officedeploymenttool_15128-20224.exe\"" -Force"
+   PowerShell -ExecutionPolicy ByPass -Command "Import-Module ManagementMsOfficeDeploymentToolShare; New-MsOfficeDeploymentToolShare -ConfigPath \""$env:UserProfile\Downloads\Configuration.xml\"" -LocalOfficeDeploymentToolPath \""$env:UserProfile\Downloads\officedeploymenttool_15128-20224.exe\"" -Force"
+
+ .Example
+   # Install to running command sample by command prompt
+   PowerShell -ExecutionPolicy ByPass -Command "Import-Module ManagementMsOfficeDeploymentToolShare; New-MsOfficeDeploymentToolShare -ConfigPath \""$env:UserProfile\Downloads\configuration-Office365-x64.xml\"",\""$env:UserProfile\Downloads\configuration-Office2021Enterprise.xml\"" -LocalOfficeDeploymentToolPath \""$env:UserProfile\Downloads\officedeploymenttool_15128-20224.exe\"" -Force"
 
 #>
 Function New-MsOfficeDeploymentToolShare{
     Param(
-        [Parameter(Mandatory)][String]$ConfigPath,
+        [Parameter(Mandatory)][String[]]$ConfigPath=@(),
         [Parameter(Mandatory)][String]$LocalOfficeDeploymentToolPath,
         [String]$DestinationDirectory = "C:\Shares",
         [Bool]$ShareIsHidden = $True,
@@ -125,8 +133,10 @@ Function New-MsOfficeDeploymentToolShare{
         }
 
         # check param
-        If (-Not (Test-Path $ConfigPath -PathType Leaf)){
-            Write-Error ([System.IO.FileNotFoundException]::new("$($NewMsOfficeDeploymentToolShareMessageTable.NotFoundConfigPath): [$ConfigPath]")) -ErrorAction Stop
+        @($ConfigPath) | ForEach-Object {
+            If (-Not (Test-Path $_ -PathType Leaf)){
+                Write-Error ([System.IO.FileNotFoundException]::new("$($NewMsOfficeDeploymentToolShareMessageTable.NotFoundConfigPath): [$ConfigPath]")) -ErrorAction Stop
+            }
         }
         If (-Not (Test-Path $DestinationDirectory -PathType Container)){
             Invoke-WriteError -Exception ([System.IO.DirectoryNotFoundException]::new("$($NewMsOfficeDeploymentToolShareMessageTable.NotFoundDestinationDirectory) [$DestinationDirectory]")) -Force $Force
@@ -192,8 +202,10 @@ Function New-MsOfficeDeploymentToolShare{
         # Copy to Directory
         New-Item $DestinationDirectory -ItemType Container -Force | Out-Null
 
-        $DestinationConfigPath = (Join-Path $DestinationDirectory (Split-Path $ConfigPath -Leaf))
-        Copy-Item $ConfigPath $DestinationConfigPath
+        @($ConfigPath) | ForEach-Object {
+            $DestinationConfigPath = (Join-Path $DestinationDirectory (Split-Path $_ -Leaf))
+            Copy-Item $ConfigPath $DestinationConfigPath
+        }
         $DestinationOdtPath = (Join-Path $DestinationDirectory "setup.exe")
         Copy-Item $TemporaryMsOdtPath (Join-Path $DestinationDirectory "setup.exe")
 
@@ -203,7 +215,12 @@ Function New-MsOfficeDeploymentToolShare{
 
         # Register task
         If (-not $NoRegisterTask){
-            $Actions = (New-ScheduledTaskAction -Execute "%WinDir%\system32\WindowsPowerShell\v1.0\powershell.exe" -Argument ("-ExecutionPolicy ByPass -Command ""Import-Module ManagementMsOfficeDeploymentToolShare; Invoke-MsOfficeDeploymentToolAndCompress -WorkingDirectory " + "'" + "$DestinationDirectory" + "'" + " -ConfigFileName " + "'" + "$(Split-Path $ConfigPath -Leaf)" + "'" + """"))
+            If ($ConfigPath.Count -gt 1){
+                $Actions = (New-ScheduledTaskAction -Execute "%WinDir%\system32\WindowsPowerShell\v1.0\powershell.exe" -Argument ("-ExecutionPolicy ByPass -Command ""Import-Module ManagementMsOfficeDeploymentToolShare; Invoke-MsOfficeDeploymentToolAndCompress -WorkingDirectory " + "'" + "$DestinationDirectory" + "'" + " -ConfigFileName " + "'" + "$((Split-Path $ConfigPath -Leaf) -Join "','")' -UsingOfficeReleases"""))
+            }
+            Else{
+                $Actions = (New-ScheduledTaskAction -Execute "%WinDir%\system32\WindowsPowerShell\v1.0\powershell.exe" -Argument ("-ExecutionPolicy ByPass -Command ""Import-Module ManagementMsOfficeDeploymentToolShare; Invoke-MsOfficeDeploymentToolAndCompress -WorkingDirectory " + "'" + "$DestinationDirectory" + "'" + " -ConfigFileName " + "'" + "$(Split-Path $ConfigPath -Leaf)'"""))
+            }
             If ($TaskTrigger -eq $Null){
                 $TaskTrigger = New-ScheduledTaskTrigger -Daily -At ([DateTime]"2:00").AddMinutes((Get-Random -Maximum (60 * 5))).ToString("H:mm") # 2:00 AM ~ 5:00 AM, Everyday
             }
