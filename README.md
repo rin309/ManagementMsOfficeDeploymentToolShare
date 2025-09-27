@@ -22,7 +22,11 @@ https://config.office.com/deploymentsettings
 3. サーバーに C:\Shares フォルダーを作成します
 4. サーバーに ManagementMsOfficeDeploymentToolShare を AllUser にインストールします *1
 5. PowerShell を管理者として実行し、下記コマンドを実行します  
-`New-MsOfficeDeploymentToolShare -ConfigPath $env:UserProfile\Downloads\Configuration.xml -LocalOfficeDeploymentToolPath $env:UserProfile\Downloads\officedeploymenttool_15128-20224.exe`
+`New-MsOfficeDeploymentToolShare -ConfigPath "$($env:UserProfile)\Downloads\構成.xml" -LocalOfficeDeploymentToolPath "$($env:UserProfile)\Downloads\officedeploymenttool_19231-20072.exe"`
+
+下記のファイル名は適宜修正してください。
+- 構成.xml
+- officedeploymenttool_19231-20072
   
 *1: 後述のタスクを実行する際に SYSTEM ユーザーで実行していることから AllUser と指定していますが、NoRegisterTask スイッチを使用してタスクを登録していない場合は CurrentUser でもかまいません。
 
