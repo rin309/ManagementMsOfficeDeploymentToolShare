@@ -101,6 +101,9 @@ Function Invoke-MsOfficeDeploymentToolAndCompress{
             "Targeted" {$InvokeMsOfficeDeploymentToolAndCompressMessageTable.TargetedChannelName}
             "SemiAnnual" {$InvokeMsOfficeDeploymentToolAndCompressMessageTable.SemiAnnualChannelName}
             "Broad" {$InvokeMsOfficeDeploymentToolAndCompressMessageTable.BroadChannelName}
+            "PerpetualVL2019" {$InvokeMsOfficeDeploymentToolAndCompressMessageTable.PerpetualVL2019ChannelName}
+            "PerpetualVL2021" {$InvokeMsOfficeDeploymentToolAndCompressMessageTable.PerpetualVL2021ChannelName}
+            "PerpetualVL2024" {$InvokeMsOfficeDeploymentToolAndCompressMessageTable.PerpetualVL2024ChannelName}
             default {Return "$($InvokeMsOfficeDeploymentToolAndCompressMessageTable.UnknownChannelName) [$Channel]"}
         }
     }
@@ -114,17 +117,20 @@ Function Invoke-MsOfficeDeploymentToolAndCompress{
             $OfficeReleases = Invoke-WebRequest "https://clients.config.office.net/releases/v1.0/OfficeReleases"
             If ($OfficeReleases.StatusCode -eq "200"){
                 $IgnoreVersions = @()
-                @($ConfigFileName) | ForEach-Object {
-                    $Xml = @(([xml](Get-Content $_ -Encoding UTF8)).Configuration.Add)[0]
-                    $Log += "$(Get-OfficeChannelDisplayName $Xml.Channel) $($InvokeMsOfficeDeploymentToolAndCompressMessageTable.LatestLabel): "
-                    If ($Xml.Version -eq $Null){
-                        $LatestVersion = (($OfficeReleases.Content | ConvertFrom-Json).SyncRoot | Where-Object channelId -like ($Xml.Channel)).latestVersion
-                        $Log += "$LatestVersion`n"
-                        $IgnoreVersions += $LatestVersion
-                    }
-                    Else{
-                        $Log += "$($Xml.Version)`n"
-                        $IgnoreVersions += $Xml.Version
+                @($FilteredConfigFileName) | ForEach-Object {
+                    $XmlConfigurations = @(([xml](Get-Content $_ -Encoding UTF8)).Configuration.Add)[0]
+                    $XmlConfigurations | Where-Object {
+                        $XmlConfiguration = $_
+                        $Log += "$(Get-OfficeChannelDisplayName $XmlConfiguration.Channel) $($InvokeMsOfficeDeploymentToolAndCompressMessageTable.LatestLabel): "
+                        If ($XmlConfiguration.Version -eq $Null){
+                            $LatestVersion = (($OfficeReleases.Content | ConvertFrom-Json).SyncRoot).latestVersion
+                            $Log += "$LatestVersion`n"
+                            $IgnoreVersions += $LatestVersion
+                        }
+                        Else{
+                            $Log += "$($XmlConfiguration.Version)`n"
+                            $IgnoreVersions += $XmlConfiguration.Version
+                        }
                     }
                 }
             }
@@ -144,12 +150,19 @@ Function Invoke-MsOfficeDeploymentToolAndCompress{
         }
         Else{
             $Log += "`n`n$($InvokeMsOfficeDeploymentToolAndCompressMessageTable.RemovedLabel):`n"
-            Get-ChildItem -Path $OfficeDataDirectoryPath -Directory | Where-Object {($_.Name -as [System.Version]) -ne $Null} | Where-Object Name -notin $IgnoreVersions | ForEach-Object {
+            Get-ChildItem -Path $OfficeDataDirectoryPath -Directory | Where-Object {($_.Name -as [System.Version]) -ne $Null -and $_.Name -notin $IgnoreVersions} | ForEach-Object {
                 Remove-Item -Path $_.FullName -Force -Recurse
-                Get-ChildItem -Path $OfficeDataDirectoryPath -File -Filter "v64_$($_.Name).cab" | Remove-Item -Force
-                Get-ChildItem -Path $OfficeDataDirectoryPath -File -Filter "v86_$($_.Name).cab" | Remove-Item -Force
-
-                $Log += "`n$($_.Name)"
+                #Get-ChildItem -Path $OfficeDataDirectoryPath -File -Filter "v64_$($_.Name).cab" | Remove-Item -Force
+                #Get-ChildItem -Path $OfficeDataDirectoryPath -File -Filter "v86_$($_.Name).cab" | Remove-Item -Force
+                $Log += "`ndirectory: $($_.Name)"
+            }
+            Get-ChildItem -Path $OfficeDataDirectoryPath -File -Filter "v64_*.cab" | Where-Object {($_.Name.Replace("v64_", "").Replace(".cab", "") -as [System.Version]) -ne $Null -and $_.Name.Replace("v64_", "").Replace(".cab", "") -notin $IgnoreVersions} | ForEach-Object {
+                Remove-Item -Path $_.FullName -Force
+                $Log += "`nx64: $($_.Name)"
+            }
+            Get-ChildItem -Path $OfficeDataDirectoryPath -File -Filter "v86_*.cab" | Where-Object {($_.Name.Replace("v86_", "").Replace(".cab", "") -as [System.Version]) -ne $Null -and $_.Name.Replace("v64_", "").Replace(".cab", "") -notin $IgnoreVersions} | ForEach-Object {
+                Remove-Item -Path $_.FullName -Force
+                $Log += "`nx86: $($_.Name)"
             }
         }
         Return $Log
@@ -173,6 +186,8 @@ Function Invoke-MsOfficeDeploymentToolAndCompress{
                 }
             }
         }
+        $Global:FilteredConfigFileName = $ConfigFileName | Where-Object {(Test-Path (Join-Path $WorkingDirectory $_))}
+
         If ($ConfigPath.Count -gt 1){
             $UsingOfficeReleases = $True
             If (-not $NoEventLogging){
@@ -181,7 +196,7 @@ Function Invoke-MsOfficeDeploymentToolAndCompress{
         }
 
         Set-Location -Path $WorkingDirectory
-        @($ConfigFileName) | ForEach-Object {
+        @($FilteredConfigFileName) | ForEach-Object {
             Invoke-Application -Path "setup.exe" -Argument "/Download $_" -WorkingDirectory $WorkingDirectory -NoEventLogging $NoEventLogging -EventLogSourceName $EventLogSourceName
         }
 

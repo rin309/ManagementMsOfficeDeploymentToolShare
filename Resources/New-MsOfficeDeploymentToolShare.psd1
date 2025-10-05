@@ -11,6 +11,7 @@ $NewMsOfficeDeploymentToolShareMessageTable = Data {
     ExistsFromTaskSchedule = Task schedule already exists
     InvalidDigitalSignature = Execution was canceled because the digital signature is invalid. Please download again or make sure your PC's digital signature is updated.
     NotFoundTemporaryMsOdtPath = Could not find TemporaryMsOdtPath
+    DownloadMsOdtFailure = Could not find Office Deployment Tool directly url from Microsoft Download Center
 
     AgreeLable = &Agree
     ExitLable = E&xit

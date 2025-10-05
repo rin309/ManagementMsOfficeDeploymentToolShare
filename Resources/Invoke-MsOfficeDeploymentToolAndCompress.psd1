@@ -26,6 +26,7 @@ $InvokeMsOfficeDeploymentToolAndCompressMessageTable = Data {
     BroadChannelName = Semi-Annual Enterprise Channel (Broad channel)
     PerpetualVL2019 = Microsoft Offie 2019 [Volume License]
     PerpetualVL2021 = Microsoft Offie 2021 [Volume License]
+    PerpetualVL2024 = Microsoft Offie 2024 [Volume License]
 
     UnknownChannelName = Unknown Channel
 

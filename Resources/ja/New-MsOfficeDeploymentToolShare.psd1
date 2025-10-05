@@ -10,6 +10,7 @@ ConvertFrom-StringData -StringData @'
     ExistsFromTaskSchedule = すでにタスクスケジュールが存在します
     InvalidDigitalSignature = デジタル署名によって正常であるか確認できませんでした。再度ダウンロードしなおすか、PCのデジタル署名が更新されていることを確認してください。
     NotFoundTemporaryMsOdtPath = TemporaryMsOdtPath が見つかりません
+    DownloadMsOdtFailure = Microsoft ダウンロードセンターから Office Deployment Tool のダウンロード URL が見つかりません
 
     AgreeLable = 同意(&A)
     ExitLable = 終了(&X)

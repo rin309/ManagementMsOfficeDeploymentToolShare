@@ -25,6 +25,7 @@ ConvertFrom-StringData -StringData @'
     BroadChannelName = 半期エンタープライズ チャネル (Broad チャネル)
     PerpetualVL2019 = Microsoft Offie 2019 [ボリューム ライセンス]
     PerpetualVL2021 = Microsoft Offie 2021 [ボリューム ライセンス]
+    PerpetualVL2024 = Microsoft Offie 2024 [ボリューム ライセンス]
 
     UnknownChannelName = 不明なチャネル
 

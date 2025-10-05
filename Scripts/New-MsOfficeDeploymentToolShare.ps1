@@ -175,12 +175,17 @@ Function New-MsOfficeDeploymentToolShare{
 
         # download ODT installer
         If ([String]::IsNullOrEmpty($LocalOfficeDeploymentToolPath)){
-            $Path = Invoke-DownloadToTemporaryDirectory -Url "https://download.microsoft.com/download/2/7/A/27AF1BE6-DD20-4CB4-B154-EBAB8A7D4A7E/officedeploymenttool_15128-20224.exe"
-            If (-not (Test-Path $Path -PathType Leaf)){
-                Write-Error ([System.IO.FileNotFoundException]::new("$($NewMsOfficeDeploymentToolShareMessageTable.NotFoundLocalOfficeDeploymentToolPath): [$LocalOfficeDeploymentToolPath]")) -ErrorAction Stop
+            If (Invoke-RestMethod "https://www.microsoft.com/en-us/download/details.aspx?id=49117" -match "(https://download.microsoft.com/download/).*?(officedeploymenttool_).*?(.exe)"){
+                $Path = Invoke-DownloadToTemporaryDirectory -Url $Matches[0]
+                If (-not (Test-Path $Path -PathType Leaf)){
+                    Write-Error ([System.IO.FileNotFoundException]::new("$($NewMsOfficeDeploymentToolShareMessageTable.NotFoundLocalOfficeDeploymentToolPath): [$LocalOfficeDeploymentToolPath]")) -ErrorAction Stop
+                }
+                $LocalOfficeDeploymentToolPath = "$Path.exe"
+                Move-Item $Path -Destination $LocalOfficeDeploymentToolPath
             }
-            $LocalOfficeDeploymentToolPath = "$Path.exe"
-            Move-Item $Path -Destination $LocalOfficeDeploymentToolPath
+            Else{
+                Write-Error ([System.IO.FileNotFoundException]::new("$($NewMsOfficeDeploymentToolShareMessageTable.DownloadMsOdtFailure)")) -ErrorAction Stop
+            }
         }
 
         # test ODT's digital signature (If it is digitally signed, it is judged that the file is not damaged.)
